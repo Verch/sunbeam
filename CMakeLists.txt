@@ -8,10 +8,10 @@ project(sunbeam)
 
 file( GLOB SOURCE_CODE
 	source/main.cpp
-	source/vehicle.h
-	source/vehicle.cpp
-	source/vehicle_manager.h
-	source/vehicle_manager.cpp
+	source/message.h
+	source/message.cpp
+	source/client.h
+	source/client.cpp
 )
 source_group("" FILES ${SOURCE_CODE})
 
@@ -22,6 +22,7 @@ set(Boost_USE_STATIC_RUNTIME     ON)
 find_package(Boost COMPONENTS system filesystem program_options date_time regex thread chrono REQUIRED)
 
 if(Boost_FOUND)
+	
 	if(MSVC)
 		if (COMMAND cmake_policy)
 		CMAKE_POLICY(SET CMP0003 NEW)
@@ -33,13 +34,14 @@ if(Boost_FOUND)
 		add_definitions(-D _CRT_SECURE_NO_WARNINGS)
 		add_definitions(/sdl /EHsc /Od /RTC1 /GS)
 	endif()
-    
-	add_definitions("-std=c++11")
-	add_definitions("-O3")
 
-	add_definitions("-static")
-	add_definitions("-static-libgcc")
-	add_definitions("-static-libstdc++")
+	if(UNIX)
+		add_definitions("-O3")
+		add_definitions("-std=c++11")
+		add_definitions("-static")
+		add_definitions("-static-libgcc")
+		add_definitions("-static-libstdc++")
+	endif()
 
 	include_directories(${Boost_INCLUDE_DIR})
 	add_executable(sunbeam ${SOURCE_CODE})

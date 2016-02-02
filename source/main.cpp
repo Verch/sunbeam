@@ -3,12 +3,12 @@
 #include <stdio.h>
 #endif
 
-
-#include <boost/thread.hpp>
 #include <boost/bind.hpp>
 #include <boost/asio.hpp>
+#include <boost/thread.hpp>
 #include <boost/shared_ptr.hpp>
 #include <boost/enable_shared_from_this.hpp>
+
 using namespace boost::asio;
 io_service service;
 
@@ -21,17 +21,26 @@ Possible requests:
 - gets a list of all connected clients
 - ping: the server answers either with "ping ok" or "ping client_list_changed"
 */
-struct talk_to_svr {
+struct talk_to_svr // names of class or struct use upper case
+{ 
 	talk_to_svr(const std::string & username)
-		: sock_(service), started_(true), username_(username) {}
-	void connect(ip::tcp::endpoint ep) {
+	: sock_(service)
+    , started_(true)
+    , username_(username)
+    {}
+
+	void connect(ip::tcp::endpoint ep)
+    {
 		sock_.connect(ep);
 	}
-	void loop() {
+
+	void loop()
+    {
 		// read answer to our login
 		write("login " + username_ + "\n");
 		read_answer();
-		while (started_) {
+		while (started_)
+        {
 			write_request();
 			read_answer();
 			int millis = rand() % 7000;
