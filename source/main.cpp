@@ -21,7 +21,7 @@ Possible requests:
 - gets a list of all connected clients
 - ping: the server answers either with "ping ok" or "ping client_list_changed"
 */
-struct talk_to_svr // names of class or struct use upper case
+struct talk_to_svr
 { 
 	talk_to_svr(const std::string & username)
 	: sock_(service)
