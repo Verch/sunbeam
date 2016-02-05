@@ -17,31 +17,54 @@ using namespace boost::asio;
 using boost::system::error_code;
 io_service service;
 
-
-ip::tcp::endpoint ep(ip::address::from_string("127.0.0.1"), 8001);
+char *FirstName = "KRACHIK";
 
 
 
 struct talk_to_svr
 {
-	talk_to_svr(const std::string & username) : sock_(service), started_(true), username_(username)
+	talk_to_svr(const std::string & username) 
+	: sock_(service)
+	, started_(true)
+	, username_(username)
 	{	}
-
-
 	void connect(ip::tcp::endpoint ep) {
 		sock_.connect(ep);
 	}
+	void registration(){
+		write("login " + username_ + "\n");
+		std::cout << "login " << username_ << std::endl;
 
+	}
 	void messages(const std::string & msg){
 		write(msg);
 	}
-
+	
 	void GetDataArival(){
 		read_answer();
 	}
-	std::string username() const { return username_; }
+	//-------------------------------------
+	void loop()
+	{
+		// read answer to our login
+		write("login " + username_ + "\n");
+		read_answer();
+		while (started_)
+		{
+			write_request();
+			//read_answer();
+			int millis = rand() % 2500;
+			std::cout << username_ << " postpone ping "
+				<< millis << " ms" << std::endl;
+			boost::this_thread::sleep(boost::posix_time::millisec(millis));
+		}
+	}
+	//-------------------------------------
 
-private:
+
+
+	std::string username() const { return username_; }
+//private:
 	size_t read_complete(const boost::system::error_code & err, size_t bytes) {
 		if (err) return 0;
 		already_read_ = bytes;
@@ -49,18 +72,54 @@ private:
 		return found ? 0 : 1;// we read one-by-one until we get to enter, no buffering
 	}
 
+	void write_request() {
+		write("ping\n");
+	}
+
 	void write(const std::string & msg) {
 		sock_.write_some(buffer(msg));
 	}
 
+	void me_ping( ) {
+		write("ping \n");
+		std::cout << "send: ping";
+	}
+
 	void read_answer() {
 		already_read_ = 0;
-		read(sock_, buffer(buff_),
-			boost::bind(&talk_to_svr::read_complete, this, _1, _2));
+		read(sock_, buffer(buff_),boost::bind(&talk_to_svr::read_complete, this, _1, _2));
 		std::string msg(buff_, already_read_);
-		std::cerr << "<--\t" << msg << std::endl;
+		process_msg();
+		//std::cerr << "<--\t" << msg << std::endl;
+		//me_ping();
 	}
-private:
+	void process_msg() {
+		std::string msg(buff_, already_read_);
+		if (msg.find("login ") == 0) on_login();
+		else if (msg.find("ping") == 0) on_ping(msg);
+		else if (msg.find("clients ") == 0) on_clients(msg);
+		else std::cerr << "invalid msg " << msg << std::endl;
+	}
+	void on_login() {
+		std::cout << username_ << " logged in" << std::endl;
+		do_ask_clients();
+	}
+	void on_ping(const std::string & msg) {
+		std::istringstream in(msg);
+		std::string answer;
+		in >> answer >> answer;
+		if (answer == "client_list_changed")
+			do_ask_clients();
+	}
+	void on_clients(const std::string & msg) {
+		std::string clients = msg.substr(8);
+		std::cout << username_ << ", new client list:" << clients;
+	}
+	void do_ask_clients() {
+		write("ask_clients\n");
+		read_answer();
+	}
+//private:
 	ip::tcp::socket sock_;
 	enum { max_msg = 1024 };
 	int already_read_;
@@ -68,10 +127,10 @@ private:
 	bool started_;
 	std::string username_;
 };
+talk_to_svr client(FirstName);
 
-talk_to_svr client("del prms");
-
-void run_client()
+/*
+void WRITER()
 {
 	const int MAX = 1023;
 	char msg[MAX] = "";
@@ -79,40 +138,55 @@ void run_client()
 	while (true)
 	{
 		std::cout << "->";
-		//std::cin.getline(msg, MAX);
-		std::cin >> str;
-		str += '\n';
-		client.messages(str);
+		
+		//std::cin >> str;//std::cin.getline(msg, MAX);
+		//str += '\n';
+		client.messages("ping \n");
 		boost::this_thread::sleep(boost::posix_time::millisec(111));
 	}
 }
+*/
 void Rider()
 {
+	//client.registration();
+	//client.loop();
+	 //Sleep(111);
 	while (true){
+		//boost::this_thread::sleep(boost::posix_time::millisec(555));
 		client.GetDataArival();
-		boost::this_thread::sleep(boost::posix_time::millisec(1));
-	}
+	} 
 }
+ 
 
+ip::tcp::endpoint ep(ip::address::from_string("127.0.0.1"), 8001);
 
-int main(int argc, char* argv[])
-{
-	setlocale(LC_ALL, "Russian");
-	try
-	{
+void static run_client(const std::string & client_name) {
+	 
+	try {
 		client.connect(ep);
-		Sleep(333);
-		boost::thread_group threads;
-		threads.create_thread(boost::bind(run_client));
-		threads.create_thread(boost::bind(Rider));
-		boost::this_thread::sleep(boost::posix_time::millisec(100));
-		threads.join_all();
+		client.loop();
 	}
 	catch (boost::system::system_error & err) {
-		std::cout << "error conections\n";
+		std::cout << "client terminated " << client.username()
+			<< ": " << err.what() << std::endl;
 	}
+} 
+
+int main(int argc, char* argv[]) 
+{
+	setlocale(LC_ALL, "Russian");
+	 
+
+
+ 	boost::thread_group threads;
+	threads.create_thread(boost::bind(run_client, FirstName));
+ 	boost::this_thread::sleep(boost::posix_time::millisec(100));
+ 	threads.join_all();
+	system("pause");
+
 }
 
+ 
 
 
 
@@ -123,14 +197,8 @@ int main(int argc, char* argv[])
 
 
 
-
-
-
-
-
-
-
-/*#ifdef WIN32
+/*
+#ifdef WIN32
 #define _WIN32_WINNT 0x0501
 #include <stdio.h>
 #endif
